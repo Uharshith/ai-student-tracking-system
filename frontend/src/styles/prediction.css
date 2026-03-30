@@ -1,0 +1,201 @@
+/* ===================================================
+   PREDICTION PAGE – AI ANALYTICS DASHBOARD
+=================================================== */
+
+.page-wrapper {
+  padding: 40px;
+  background: #f6f8fc;
+  min-height: 100vh;
+  font-family: "Inter", sans-serif;
+}
+
+/* ================= HEADER ================= */
+
+.page-wrapper h1 {
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  background: linear-gradient(90deg, #4f46e5, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+
+/* ================= GRID ================= */
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 22px;
+  margin-top: 15px;
+  overflow: visible; /* prevents zoom clipping */
+}
+
+/* ================= CARD ================= */
+
+.card {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+
+  transition: transform 0.35s ease,
+              box-shadow 0.35s ease;
+
+  transform: scale(1);
+  position: relative;
+  z-index: 1;
+
+  will-change: transform; /* smooth GPU animation */
+}
+
+/* Hover Zoom Animation */
+
+.card:hover {
+  transform: scale(1.08) translateY(-8px);
+  box-shadow: 0 30px 65px rgba(79,70,229,0.25);
+  z-index: 10;
+}
+
+/* Glow Effect */
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: radial-gradient(circle at center, rgba(79,70,229,0.08), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+/* ================= CARD TITLE ================= */
+
+.card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #111827;
+}
+
+/* ================= CARD TEXT ================= */
+
+.card p {
+  font-size: 14px;
+  margin: 6px 0;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.card strong {
+  color: #111827;
+}
+
+/* ================= TREND TEXT ================= */
+
+.card p:nth-child(5) {
+  font-weight: 600;
+}
+
+/* ================= AI INSIGHT ================= */
+
+.card p:last-child {
+  background: #f1f5ff;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ================= RISK COLORS ================= */
+
+.card.success {
+  border-left: 6px solid #22c55e;
+}
+
+.card.warning {
+  border-left: 6px solid #f59e0b;
+}
+
+.card.danger {
+  border-left: 6px solid #ef4444;
+}
+
+/* ================= RECOMMENDATIONS ================= */
+
+.card ul {
+  margin-top: 10px;
+  padding-left: 18px;
+}
+
+.card ul li {
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.card ul li::marker {
+  color: #4f46e5;
+}
+
+/* ================= SECTION HEADINGS ================= */
+
+h2 {
+  margin-top: 35px;
+  margin-bottom: 15px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* ================= CHART CONTAINER ================= */
+
+.risk-chart-container {
+  margin-top: 35px;
+  margin-bottom: 40px;
+  background: white;
+  padding: 28px;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+}
+
+/* ================= LOADER ================= */
+
+.loader-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 768px) {
+
+  .page-wrapper {
+    padding: 20px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+}
