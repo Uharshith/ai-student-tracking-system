@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import studentService from "../../api/studentService";
+import RiskChart from "../../components/charts/RiskChart";
 import "../../styles/dashboard.css";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
 
-  const [data, setData] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [ai, setAI] = useState(null);
+  const [riskData, setRiskData] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchDashboard();
@@ -15,17 +20,26 @@ export default function StudentDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const res = await studentService.getRecommendation();
-      setData(res.data);
+      // 🔥 CALL BOTH APIs
+      const statsRes = await studentService.getCurrentSemStats();
+      const pieRes = await studentService.getRiskPieChart();
+
+      setStats(statsRes.data);
+      setAI(statsRes.data);
+
+      // 🔥 IMPORTANT FIX (USE pie_data)
+      setRiskData(pieRes.data.pie_data);
+
     } catch (err) {
       console.error("Dashboard error:", err.response?.data || err.message);
+      setError("Failed to load dashboard");
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) return <div className="student-dashboard">Loading...</div>;
-  if (!data) return <div className="student-dashboard">No data found</div>;
+  if (error) return <div className="student-dashboard">{error}</div>;
 
   return (
     <div className="student-dashboard">
@@ -46,9 +60,9 @@ export default function StudentDashboard() {
           className="kpi-card clickable"
           onClick={() => navigate("/student/attendance")}
         >
-          <div className="kpi-title">Attendance</div>
+          <div className="kpi-title">Current Sem Attendance</div>
           <div className="kpi-value">
-            {data.attendance_percentage}%
+            {stats?.attendance ?? 0}%
           </div>
         </div>
 
@@ -56,9 +70,9 @@ export default function StudentDashboard() {
           className="kpi-card clickable"
           onClick={() => navigate("/student/marks")}
         >
-          <div className="kpi-title">Average Marks</div>
+          <div className="kpi-title">Current Sem Avg Marks</div>
           <div className="kpi-value">
-            {data.average_marks}%
+            {stats?.average_marks > 0 ? stats.average_marks : "N/A"}
           </div>
         </div>
 
@@ -66,14 +80,14 @@ export default function StudentDashboard() {
           <div className="kpi-title">Performance Level</div>
           <div
             className={`kpi-value ${
-              data.performance_level === "High"
+              ai?.performance_level === "High"
                 ? "success"
-                : data.performance_level === "Medium"
+                : ai?.performance_level === "Medium"
                 ? "warning"
                 : "danger"
             }`}
           >
-            {data.performance_level}
+            {ai?.performance_level || "N/A"}
           </div>
         </div>
 
@@ -81,26 +95,26 @@ export default function StudentDashboard() {
           <div className="kpi-title">Risk Level</div>
           <div
             className={`kpi-value ${
-              data.risk_level === "Low"
+              ai?.risk_level === "Low"
                 ? "success"
-                : data.risk_level === "Medium"
+                : ai?.risk_level === "Medium"
                 ? "warning"
                 : "danger"
             }`}
           >
-            {data.risk_level}
+            {ai?.risk_level || "N/A"}
           </div>
         </div>
 
       </div>
 
-      {/* Recommendation Section */}
+      {/* AI Recommendations */}
       <div className="chart-container">
         <h3>AI Recommendations</h3>
         <div className="chart-box">
-          {data.recommendations?.length > 0 ? (
+          {ai?.recommendations?.length > 0 ? (
             <ul>
-              {data.recommendations.map((rec, index) => (
+              {ai.recommendations.map((rec, index) => (
                 <li key={index}>{rec}</li>
               ))}
             </ul>
@@ -108,6 +122,12 @@ export default function StudentDashboard() {
             <p>No recommendations available</p>
           )}
         </div>
+      </div>
+
+      {/* 🔥 FIXED Risk Chart */}
+      <div className="chart-container">
+        <h3>Risk Distribution</h3>
+        <RiskChart predictions={riskData} />
       </div>
 
     </div>

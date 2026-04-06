@@ -12,13 +12,13 @@ from django.contrib.auth.models import User
 # =========================
 # CONFIG
 # =========================
-FILE_PATH = "sem2_marks_updated.xlsx"
-YEAR = 1
-SEMESTER = 2
+FILE_PATH = "sem7_marks_generated.xlsx"   # change file
+YEAR = 4
+SEMESTER = 7
 
 
 # =========================
-# HELPER
+# NORMALIZER
 # =========================
 def normalize(text):
     return str(text).strip().lower()
@@ -32,15 +32,15 @@ print("🚀 Starting marks import...")
 # =========================
 df = pd.read_excel(FILE_PATH)
 
-# DEBUG
-print("📊 Columns in file:", list(df.columns))
+print("📊 Original Columns:", list(df.columns))
 
-# Normalize column names
 df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+
+print("📊 Cleaned Columns:", list(df.columns))
 
 
 # =========================
-# FIX COLUMN NAMES (ROBUST)
+# FIX COLUMN NAMES
 # =========================
 if "roll_number" not in df.columns:
     if "register_number" in df.columns:
@@ -50,13 +50,7 @@ if "roll_number" not in df.columns:
     else:
         raise Exception(f"❌ No roll number column found: {df.columns}")
 
-# Ensure standard names
-rename_map = {
-    "exam_type": "exam_type",
-    "marks_obtained": "marks_obtained",
-    "marks": "marks_obtained"
-}
-df.rename(columns=rename_map, inplace=True)
+df.rename(columns={"marks": "marks_obtained"}, inplace=True)
 
 
 # =========================
@@ -75,57 +69,84 @@ for col in required_columns:
 faculty_user = User.objects.filter(username="faculty1").first()
 
 if not faculty_user or not hasattr(faculty_user, "faculty"):
-    raise Exception("❌ Faculty 'faculty1' not found or not linked")
+    raise Exception("❌ Faculty not found")
 
 faculty = faculty_user.faculty
 
 
 # =========================
-# PRELOAD DATA
+# PRELOAD STUDENTS
 # =========================
 students = {
     normalize(s.roll_number): s
     for s in Student.objects.all()
 }
 
+
+# =========================
+# PRELOAD SUBJECTS (DYNAMIC)
+# =========================
+subjects_qs = Subject.objects.filter(year=YEAR, semester=SEMESTER)
+
+if not subjects_qs.exists():
+    raise Exception(f"❌ No subjects found for Year {YEAR}, Sem {SEMESTER}")
+
 subjects = {
     normalize(s.name): s
-    for s in Subject.objects.filter(year=YEAR, semester=SEMESTER)
+    for s in subjects_qs
 }
+
+print("\n📚 Subjects in DB:")
+for s in subjects_qs:
+    print("-", s.name)
 
 
 # =========================
 # EXISTING DATA
 # =========================
 existing = set(
-    Marks.objects.values_list("student_id", "subject_id", "exam_type")
+    Marks.objects.filter(subject__semester=SEMESTER)
+    .values_list("student_id", "subject_id", "exam_type")
 )
 
 
 # =========================
-# VALID EXAM TYPES
+# VALID EXAMS
 # =========================
 VALID_EXAMS = ["INT", "MID", "FIN"]
 
 
 # =========================
-# PROCESS DATA
+# DEDUP EXCEL
+# =========================
+dedup_map = {}
+
+for i, row in df.iterrows():
+    roll = normalize(row["roll_number"])
+    subject_name = normalize(row["subject"])
+    exam_type = str(row["exam_type"]).strip().upper()
+
+    key = (roll, subject_name, exam_type)
+    dedup_map[key] = row   # last occurrence wins
+
+print(f"📦 Unique records after dedup: {len(dedup_map)}")
+
+
+# =========================
+# PROCESS
 # =========================
 marks_objects = []
 inserted = 0
 skipped = 0
+invalid_subjects = set()
 batch_size = 5000
 
 
-for i, row in df.iterrows():
+for key, row in dedup_map.items():
     try:
-        roll = normalize(row["roll_number"])
-        subject_name = normalize(row["subject"])
-        exam_type = str(row["exam_type"]).strip().upper()
+        roll, subject_name, exam_type = key
 
-        # VALIDATE EXAM TYPE
         if exam_type not in VALID_EXAMS:
-            print(f"❌ Invalid exam type at row {i}: {exam_type}")
             skipped += 1
             continue
 
@@ -133,25 +154,30 @@ for i, row in df.iterrows():
         try:
             marks_value = float(row["marks_obtained"])
         except:
-            print(f"❌ Invalid marks at row {i}")
+            skipped += 1
+            continue
+
+        if not (0 <= marks_value <= 100):
+            print(f"❌ Invalid marks: {marks_value}")
             skipped += 1
             continue
 
         student = students.get(roll)
+        subject = subjects.get(subject_name)
+
         if not student:
             print(f"❌ Student not found: {roll}")
             skipped += 1
             continue
 
-        subject = subjects.get(subject_name)
         if not subject:
-            print(f"❌ Subject not found (SEM {SEMESTER}): {subject_name}")
+            invalid_subjects.add(subject_name)
             skipped += 1
             continue
 
-        key = (student.id, subject.id, exam_type)
+        db_key = (student.id, subject.id, exam_type)
 
-        if key in existing:
+        if db_key in existing:
             skipped += 1
             continue
 
@@ -165,15 +191,16 @@ for i, row in df.iterrows():
             )
         )
 
-        existing.add(key)
+        existing.add(db_key)
         inserted += 1
 
         if len(marks_objects) >= batch_size:
             Marks.objects.bulk_create(marks_objects)
             marks_objects = []
+            print(f"⚡ Inserted {inserted} records...")
 
     except Exception as e:
-        print(f"⚠️ Error at row {i}: {e}")
+        print(f"⚠️ Error: {e}")
         skipped += 1
 
 
@@ -187,6 +214,14 @@ if marks_objects:
 # =========================
 # RESULT
 # =========================
+print("\n==========================")
 print("✅ Marks inserted:", inserted)
 print("⚠️ Rows skipped:", skipped)
-print("🎯 Marks import completed successfully")
+
+if invalid_subjects:
+    print("\n❌ Unknown subjects found:")
+    for s in invalid_subjects:
+        print("-", s)
+
+print("🎯 Import completed")
+print("==========================")

@@ -278,105 +278,7 @@ class StudentMarksView(APIView):
         return Response(serializer.data)
 
 
-# =====================================================
-# AI RECOMMENDATION ENGINE
-# =====================================================
 
-class RecommendationAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-
-        if not hasattr(request.user, "profile"):
-            return Response({"detail": "Profile not found"}, status=400)
-
-        role = request.user.profile.role
-
-        if role == "STUDENT":
-
-            try:
-                student = Student.objects.get(user=request.user)
-            except Student.DoesNotExist:
-                return Response({"detail": "Student profile not found"}, status=400)
-
-            total_classes = Attendance.objects.filter(student=student).count()
-            present_classes = Attendance.objects.filter(
-                student=student,
-                status='P'
-            ).count()
-
-            attendance_percentage = (
-                (present_classes / total_classes) * 100
-                if total_classes > 0 else 0
-            )
-
-            avg_marks = Marks.objects.filter(student=student).aggregate(
-                average=Avg("marks_obtained")
-            )["average"] or 0
-
-            backlog_count = Marks.objects.filter(
-                student=student,
-                marks_obtained__lt=40
-            ).count()
-
-            prediction = predict_performance(
-                attendance_percentage,
-                avg_marks,
-                avg_marks,
-                backlog_count
-            )
-
-            result = generate_recommendation(prediction)
-
-            return Response({
-                "attendance_percentage": round(attendance_percentage, 2),
-                "average_marks": round(avg_marks, 2),
-                "backlogs": backlog_count,
-                "performance_level": result["performance_level"],
-                "risk_level": result["risk_level"],
-                "recommendations": result["student_recommendations"]
-            })
-
-        elif role == "FACULTY":
-
-            students = Student.objects.all()
-            summary = {"High": 0, "Medium": 0, "Low": 0}
-
-            for student in students:
-                total_classes = Attendance.objects.filter(student=student).count()
-                present_classes = Attendance.objects.filter(
-                    student=student,
-                    status='P'
-                ).count()
-
-                attendance_percentage = (
-                    (present_classes / total_classes) * 100
-                    if total_classes > 0 else 0
-                )
-
-                avg_marks = Marks.objects.filter(student=student).aggregate(
-                    average=Avg("marks_obtained")
-                )["average"] or 0
-
-                backlog_count = Marks.objects.filter(
-                    student=student,
-                    marks_obtained__lt=40
-                ).count()
-
-                prediction = predict_performance(
-                    attendance_percentage,
-                    avg_marks,
-                    avg_marks,
-                    backlog_count
-                )
-
-                result = generate_recommendation(prediction)
-                summary[result["performance_level"]] += 1
-
-            return Response({"category_summary": summary})
-
-        return Response({"detail": "Invalid role"}, status=400)
-    
 from rest_framework.permissions import IsAuthenticated
 
 class ProfileAPIView(APIView):
@@ -1050,142 +952,7 @@ class StudentMarksView(APIView):
         return Response(serializer.data)
 
 
-# =====================================================
-# AI RECOMMENDATION ENGINE
-# =====================================================
 
-class RecommendationAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-
-        if not hasattr(request.user, "profile"):
-            return Response({"detail": "Profile not found"}, status=400)
-
-        role = request.user.profile.role
-
-        # ===============================
-        # 🔥 GET SEMESTER (NEW)
-        # ===============================
-        semester = request.GET.get("semester")
-
-        try:
-            semester = int(semester) if semester else None
-        except ValueError:
-            return Response({"error": "Invalid semester"}, status=400)
-
-        print("SEM:", semester)
-
-        # =====================================================
-        # STUDENT
-        # =====================================================
-        if role == "STUDENT":
-
-            try:
-                student = Student.objects.get(user=request.user)
-            except Student.DoesNotExist:
-                return Response({"detail": "Student profile not found"}, status=400)
-
-            # ===============================
-            # 🔥 APPLY FILTER (MAIN FIX)
-            # ===============================
-            attendance_qs = Attendance.objects.filter(student=student)
-            marks_qs = Marks.objects.filter(student=student)
-
-            if semester:
-                attendance_qs = attendance_qs.filter(subject__semester=semester)
-                marks_qs = marks_qs.filter(subject__semester=semester)
-
-            # ===============================
-            # ATTENDANCE
-            # ===============================
-            total_classes = attendance_qs.count()
-            present_classes = attendance_qs.filter(status='P').count()
-
-            attendance_percentage = (
-                (present_classes / total_classes) * 100
-                if total_classes > 0 else 0
-            )
-
-            # ===============================
-            # MARKS
-            # ===============================
-            avg_marks = marks_qs.aggregate(
-                average=Avg("marks_obtained")
-            )["average"] or 0
-
-            backlog_count = marks_qs.filter(
-                marks_obtained__lt=40
-            ).count()
-
-            # ===============================
-            # PREDICTION
-            # ===============================
-            prediction = predict_performance(
-                attendance_percentage,
-                avg_marks,
-                avg_marks,
-                backlog_count
-            )
-
-            result = generate_recommendation(prediction)
-
-            return Response({
-                "attendance_percentage": round(attendance_percentage, 2),
-                "average_marks": round(avg_marks, 2),
-                "backlogs": backlog_count,
-                "performance_level": result["performance_level"],
-                "risk_level": result["risk_level"],
-                "recommendations": result["student_recommendations"]
-            })
-
-        # =====================================================
-        # FACULTY
-        # =====================================================
-        elif role == "FACULTY":
-
-            students = Student.objects.all()
-            summary = {"High": 0, "Medium": 0, "Low": 0}
-
-            for student in students:
-
-                attendance_qs = Attendance.objects.filter(student=student)
-                marks_qs = Marks.objects.filter(student=student)
-
-                if semester:
-                    attendance_qs = attendance_qs.filter(subject__semester=semester)
-                    marks_qs = marks_qs.filter(subject__semester=semester)
-
-                total_classes = attendance_qs.count()
-                present_classes = attendance_qs.filter(status='P').count()
-
-                attendance_percentage = (
-                    (present_classes / total_classes) * 100
-                    if total_classes > 0 else 0
-                )
-
-                avg_marks = marks_qs.aggregate(
-                    average=Avg("marks_obtained")
-                )["average"] or 0
-
-                backlog_count = marks_qs.filter(
-                    marks_obtained__lt=40
-                ).count()
-
-                prediction = predict_performance(
-                    attendance_percentage,
-                    avg_marks,
-                    avg_marks,
-                    backlog_count
-                )
-
-                result = generate_recommendation(prediction)
-                summary[result["performance_level"]] += 1
-
-            return Response({"category_summary": summary})
-
-        return Response({"detail": "Invalid role"}, status=400)
-    
     
 from rest_framework.permissions import IsAuthenticated
 
@@ -1730,207 +1497,9 @@ class StudentAttendanceHistoryView(APIView):
         return Response(data)
 
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 
-from ml.recommendation_predict import get_recommendation
-from ml.trend_predict import predict_trend
+    
 
-from .models import Attendance, Marks, Student
-
-
-class RecommendationView(APIView):
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-
-        # ===============================
-        # GET STUDENT
-        # ===============================
-
-        student = Student.objects.get(user=request.user)
-
-        # ===============================
-        # ATTENDANCE CALCULATION
-        # ===============================
-
-        attendance_records = Attendance.objects.filter(student=student)
-
-        total = attendance_records.count()
-
-        present = attendance_records.filter(
-            status__in=["PRESENT", "Present", "present", "P"]
-        ).count()
-
-        attendance_percentage = (present / total) * 100 if total else 0
-
-        # ===============================
-        # MARKS CALCULATION
-        # ===============================
-
-        marks = Marks.objects.filter(student=student)
-
-        mid_marks = marks.filter(
-            exam_type="MID"
-        ).values_list("marks_obtained", flat=True)
-
-        internal_marks = marks.filter(
-            exam_type="INT"
-        ).values_list("marks_obtained", flat=True)
-
-        final_marks = marks.filter(
-            exam_type="FIN"
-        ).values_list("marks_obtained", flat=True)
-
-        mid_avg = sum(mid_marks) / len(mid_marks) if mid_marks else 0
-        internal_avg = sum(internal_marks) / len(internal_marks) if internal_marks else 0
-        final_avg = sum(final_marks) / len(final_marks) if final_marks else 0
-
-        average_marks = (mid_avg + internal_avg + final_avg) / 3
-
-        # ===============================
-        # ML RECOMMENDATION
-        # ===============================
-
-        recommendation = get_recommendation(
-            attendance_percentage,
-            mid_avg,
-            internal_avg,
-            final_avg,
-            average_marks
-        )
-
-        # ===============================
-        # PERFORMANCE LEVEL
-        # ===============================
-
-        if average_marks >= 75:
-            performance = "High"
-        elif average_marks >= 50:
-            performance = "Medium"
-        else:
-            performance = "Low"
-
-        # ===============================
-        # RISK LEVEL
-        # ===============================
-
-        if attendance_percentage < 60 or average_marks < 50:
-            risk = "High"
-        elif attendance_percentage < 75:
-            risk = "Medium"
-        else:
-            risk = "Low"
-
-        # ===============================
-        # SUBJECT RISK PREDICTION
-        # ===============================
-
-        subject_risk = []
-
-        subjects = marks.values("subject__name").distinct()
-
-        for s in subjects:
-
-            subject_name = s["subject__name"]
-
-            subject_marks = marks.filter(
-                subject__name=subject_name
-            ).values_list("marks_obtained", flat=True)
-
-            avg = sum(subject_marks) / len(subject_marks)
-
-            if avg < 40:
-                risk_level = "High Risk"
-            elif avg < 60:
-                risk_level = "Medium Risk"
-            else:
-                risk_level = "Low Risk"
-
-            subject_risk.append({
-                "subject": subject_name,
-                "risk": risk_level
-            })
-
-        # ===============================
-        # EXAM TREND ANALYSIS (ML MODEL)
-        # ===============================
-
-        trend_analysis = []
-
-        subjects = marks.values("subject__name").distinct()
-
-        for s in subjects:
-
-            subject_name = s["subject__name"]
-
-            mid = marks.filter(
-                subject__name=subject_name,
-                exam_type="MID"
-            ).values_list("marks_obtained", flat=True)
-
-            internal = marks.filter(
-                subject__name=subject_name,
-                exam_type="INT"
-            ).values_list("marks_obtained", flat=True)
-
-            final = marks.filter(
-                subject__name=subject_name,
-                exam_type="FIN"
-            ).values_list("marks_obtained", flat=True)
-
-            mid_mark = sum(mid) / len(mid) if mid else 0
-            internal_mark = sum(internal) / len(internal) if internal else 0
-            final_mark = sum(final) / len(final) if final else 0
-
-            trend, message = predict_trend(
-                mid_mark,
-                internal_mark,
-                final_mark
-            )
-
-            trend_analysis.append({
-                "subject": subject_name,
-                "mid": round(mid_mark, 2),
-                "internal": round(internal_mark, 2),
-                "final": round(final_mark, 2),
-                "trend": trend,
-                "message": message
-            })
-
-        # ===============================
-        # MULTIPLE RECOMMENDATIONS
-        # ===============================
-
-        recommendations = [
-            recommendation,
-            "Increase attendance above 75%",
-            "Revise internal assessments weekly",
-        ]
-
-        # ===============================
-        # RESPONSE
-        # ===============================
-
-        return Response({
-
-            "attendance_percentage": round(attendance_percentage, 2),
-
-            "average_marks": round(average_marks, 2),
-
-            "performance_level": performance,
-
-            "risk_level": risk,
-
-            "recommendations": recommendations,
-
-            "subject_risk": subject_risk,
-
-            "trend_analysis": trend_analysis
-
-        })
 
 class StudentSubjectListAPIView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
@@ -1953,228 +1522,21 @@ class StudentSubjectListAPIView(APIView):
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-
-from ml.recommendation_predict import get_recommendation
-from ml.trend_predict import predict_trend
-
-from .models import Attendance, Marks, Student
-
-
-class RecommendationView(APIView):
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-
-        # ===============================
-        # GET STUDENT
-        # ===============================
-
-        student = Student.objects.get(user=request.user)
-
-        # ===============================
-        # ATTENDANCE CALCULATION
-        # ===============================
-
-        attendance_records = Attendance.objects.filter(student=student)
-
-        total = attendance_records.count()
-
-        present = attendance_records.filter(
-            status__in=["PRESENT", "Present", "present", "P"]
-        ).count()
-
-        attendance_percentage = (present / total) * 100 if total else 0
-
-        # ===============================
-        # MARKS CALCULATION
-        # ===============================
-
-        marks = Marks.objects.filter(student=student)
-
-        mid_marks = marks.filter(
-            exam_type="MID"
-        ).values_list("marks_obtained", flat=True)
-
-        internal_marks = marks.filter(
-            exam_type="INT"
-        ).values_list("marks_obtained", flat=True)
-
-        final_marks = marks.filter(
-            exam_type="FIN"
-        ).values_list("marks_obtained", flat=True)
-
-        mid_avg = sum(mid_marks) / len(mid_marks) if mid_marks else 0
-        internal_avg = sum(internal_marks) / len(internal_marks) if internal_marks else 0
-        final_avg = sum(final_marks) / len(final_marks) if final_marks else 0
-
-        average_marks = (mid_avg + internal_avg + final_avg) / 3
-
-        # ===============================
-        # ML RECOMMENDATION
-        # ===============================
-
-        recommendation = get_recommendation(
-            attendance_percentage,
-            mid_avg,
-            internal_avg,
-            final_avg,
-            average_marks
-        )
-
-        # ===============================
-        # PERFORMANCE LEVEL
-        # ===============================
-
-        if average_marks >= 75:
-            performance = "High"
-        elif average_marks >= 50:
-            performance = "Medium"
-        else:
-            performance = "Low"
-
-        # ===============================
-        # RISK LEVEL
-        # ===============================
-
-        if attendance_percentage < 60 or average_marks < 50:
-            risk = "High"
-        elif attendance_percentage < 75:
-            risk = "Medium"
-        else:
-            risk = "Low"
-
-        # ===============================
-        # SUBJECT RISK PREDICTION
-        # ===============================
-
-        subject_risk = []
-
-        subjects = marks.values("subject__name").distinct()
-
-        for s in subjects:
-
-            subject_name = s["subject__name"]
-
-            subject_marks = marks.filter(
-                subject__name=subject_name
-            ).values_list("marks_obtained", flat=True)
-
-            avg = sum(subject_marks) / len(subject_marks)
-
-            if avg < 40:
-                risk_level = "High Risk"
-            elif avg < 60:
-                risk_level = "Medium Risk"
-            else:
-                risk_level = "Low Risk"
-
-            subject_risk.append({
-                "subject": subject_name,
-                "risk": risk_level
-            })
-
-        # ===============================
-        # EXAM TREND ANALYSIS (ML MODEL)
-        # ===============================
-
-        trend_analysis = []
-
-        subjects = marks.values("subject__name").distinct()
-
-        for s in subjects:
-
-            subject_name = s["subject__name"]
-
-            mid = marks.filter(
-                subject__name=subject_name,
-                exam_type="MID"
-            ).values_list("marks_obtained", flat=True)
-
-            internal = marks.filter(
-                subject__name=subject_name,
-                exam_type="INT"
-            ).values_list("marks_obtained", flat=True)
-
-            final = marks.filter(
-                subject__name=subject_name,
-                exam_type="FIN"
-            ).values_list("marks_obtained", flat=True)
-
-            mid_mark = sum(mid) / len(mid) if mid else 0
-            internal_mark = sum(internal) / len(internal) if internal else 0
-            final_mark = sum(final) / len(final) if final else 0
-
-            trend, message = predict_trend(
-                mid_mark,
-                internal_mark,
-                final_mark
-            )
-
-            trend_analysis.append({
-                "subject": subject_name,
-                "mid": round(mid_mark, 2),
-                "internal": round(internal_mark, 2),
-                "final": round(final_mark, 2),
-                "trend": trend,
-                "message": message
-            })
-
-        # ===============================
-        # MULTIPLE RECOMMENDATIONS
-        # ===============================
-
-        recommendations = [
-            recommendation,
-            "Increase attendance above 75%",
-            "Revise internal assessments weekly",
-        ]
-
-        # ===============================
-        # RESPONSE
-        # ===============================
-
-        return Response({
-
-            "attendance_percentage": round(attendance_percentage, 2),
-
-            "average_marks": round(average_marks, 2),
-
-            "performance_level": performance,
-
-            "risk_level": risk,
-
-            "recommendations": recommendations,
-
-            "subject_risk": subject_risk,
-
-            "trend_analysis": trend_analysis
-
-        })
-
-
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
 from django.db.models import Avg
 
-from .models import Attendance, Marks
+from .models import Subject, Attendance, Marks
 from ml.insights import generate_ai_insight
 from ml.recommendation import generate_recommendation
+from ml.trend_predict import predict_trend
+from ml.recommendation_predict import get_recommendation
 
 
 class SubjectRiskPredictionView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
 
         student = request.user.student
-
-        # ===============================
-        # GET SEMESTER
-        # ===============================
         semester = request.GET.get("semester")
 
         try:
@@ -2182,11 +1544,6 @@ class SubjectRiskPredictionView(APIView):
         except ValueError:
             return Response({"error": "Invalid semester"}, status=400)
 
-        print("SEM:", semester)
-
-        # ===============================
-        # GET SUBJECTS (CONTROLLED SOURCE)
-        # ===============================
         subjects = Subject.objects.filter(
             department=student.department,
             year__lte=student.year
@@ -2195,92 +1552,297 @@ class SubjectRiskPredictionView(APIView):
         if semester:
             subjects = subjects.filter(semester=semester)
 
-        # ===============================
-        # BASE DATA
-        # ===============================
-        attendance_records = Attendance.objects.filter(student=student)
-        marks_records = Marks.objects.filter(student=student)
-
         results = []
 
-        # ===============================
-        # LOOP SUBJECTS
-        # ===============================
         for subject in subjects:
 
-            # -----------------------------
-            # Attendance
-            # -----------------------------
-            subject_attendance = attendance_records.filter(subject=subject)
-
-            total_classes = subject_attendance.count()
-
-            present_classes = subject_attendance.filter(
-                status__in=["P", "Present", "present", "PRESENT"]
-            ).count()
-
-            attendance_percentage = (
-                (present_classes / total_classes) * 100
-                if total_classes > 0 else 0
+            # ================= ATTENDANCE =================
+            attendance_qs = Attendance.objects.filter(
+                student=student,
+                subject=subject
             )
 
-            # -----------------------------
-            # Marks
-            # -----------------------------
-            subject_marks = marks_records.filter(subject=subject)
+            total = attendance_qs.count()
+            present = attendance_qs.filter(status="P").count()
 
-            avg_marks = subject_marks.aggregate(
-                avg=Avg("marks_obtained")
-            )["avg"] or 0
+            attendance = (present / total * 100) if total else 0
 
-            # ===============================
-            # 🔥 FIX 1: SKIP ONLY IF NO DATA AT ALL
-            # ===============================
-            if total_classes == 0 and avg_marks == 0:
+            # ================= MARKS =================
+            mid = Marks.objects.filter(
+                student=student, subject=subject, exam_type="MID"
+            ).aggregate(avg=Avg("marks_obtained"))["avg"] or 0
+
+            internal = Marks.objects.filter(
+                student=student, subject=subject, exam_type="INT"
+            ).aggregate(avg=Avg("marks_obtained"))["avg"] or 0
+
+            final = Marks.objects.filter(
+                student=student, subject=subject, exam_type="FIN"
+            ).aggregate(avg=Avg("marks_obtained"))["avg"] or 0
+
+            avg_marks = (mid + internal + final) / 3 if (mid or internal or final) else 0
+
+            # ================= SKIP EMPTY =================
+            if attendance == 0 and avg_marks == 0:
                 continue
 
-            # -----------------------------
-            # Risk Logic
-            # -----------------------------
-            if attendance_percentage < 60 or avg_marks < 40:
+            # ================= RISK =================
+            if attendance < 60 or avg_marks < 40:
                 risk = "High Risk"
-            elif attendance_percentage < 75 or avg_marks < 55:
+            elif attendance < 75 or avg_marks < 60:
                 risk = "Medium Risk"
             else:
                 risk = "Low Risk"
 
-            # -----------------------------
-            # AI Insight
-            # -----------------------------
+            # ================= AI INSIGHT =================
             ai_insight = generate_ai_insight(
                 subject.name,
-                attendance_percentage,
+                attendance,
                 avg_marks
             )
 
-            # -----------------------------
-            # Recommendation
-            # -----------------------------
-            recommendation = generate_recommendation(
+            # ================= ML TREND =================
+            trend, trend_message = predict_trend(mid, internal, final)
+
+            # ================= ML RECOMMENDATION =================
+            ml_recommendation = get_recommendation(
+                attendance,
+                mid,
+                internal,
+                final,
+                avg_marks
+            )
+
+            # ================= RULE RECOMMENDATIONS =================
+            rule_recommendations = generate_recommendation(
                 subject.name,
-                attendance_percentage,
+                attendance,
                 avg_marks,
                 risk
             )
 
-            # -----------------------------
-            # Append Result
-            # -----------------------------
+            # ================= FINAL (🔥 FIXED HERE) =================
+            
+            final_recommendations = [ml_recommendation] + rule_recommendations[:7]
+
+            # ================= RESPONSE =================
             results.append({
                 "subject": subject.name,
-                "attendance": round(attendance_percentage, 2),
+                "attendance": round(attendance, 2),
                 "average_marks": round(avg_marks, 2),
                 "risk": risk,
                 "ai_insight": ai_insight,
-                "recommendation": recommendation
+                "recommendations": final_recommendations,
+                "trend": trend,
+                "trend_message": trend_message,
+                "mid": round(mid, 2),
+                "internal": round(internal, 2),
+                "final": round(final, 2)
             })
 
-        # ===============================
-        # 🔥 FIX 2: EMPTY RESPONSE HANDLING
-        # ===============================
         return Response(results)
+    
+       
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import Avg
+
+from .models import Subject, Attendance, Marks
+from .permissions import IsStudent
+
+# ✅ IMPORT YOUR NEW SMART RECOMMENDER
+from ml.smart_recommendation import generate_smart_recommendation
+
+
+class StudentDashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def get(self, request):
+
+        # ================= SAFE STUDENT FETCH =================
+        try:
+            student = request.user.student
+        except:
+            return Response({"error": "Student not found"}, status=400)
+
+        # ================= CURRENT SEM =================
+        current_sem = (
+            Subject.objects.filter(
+                department=student.department,
+                year=student.year
+            )
+            .order_by("-semester")
+            .values_list("semester", flat=True)
+            .first()
+        )
+
+        if not current_sem:
+            return Response({
+                "attendance": 0,
+                "average_marks": 0,
+                "performance_level": "Low",
+                "risk_level": "High",
+                "recommendations": []
+            })
+
+        # ================= ATTENDANCE =================
+        attendance_qs = Attendance.objects.filter(
+            student=student,
+            subject__semester=current_sem
+        )
+
+        total = attendance_qs.count()
+        present = attendance_qs.filter(status="P").count()
+
+        attendance = (present / total * 100) if total else 0
+
+        # ================= MARKS =================
+        marks_qs = Marks.objects.filter(
+            student=student,
+            subject__semester=current_sem,
+            exam_type="FIN"
+        ).exclude(subject__name__icontains="internship")
+
+        avg_marks = marks_qs.aggregate(
+            avg=Avg("marks_obtained")
+        )["avg"] or 0
+
+        # ================= BACKLOGS =================
+        backlogs = marks_qs.filter(
+            marks_obtained__lt=40
+        ).count()
+
+        # ================= PERFORMANCE LEVEL =================
+        if avg_marks >= 75 and attendance >= 80:
+            performance = "High"
+        elif avg_marks >= 50 and attendance >= 65:
+            performance = "Medium"
+        else:
+            performance = "Low"
+
+        # ================= RISK LEVEL =================
+        if avg_marks < 40 or attendance < 60:
+            risk = "High"
+        elif avg_marks < 55 or attendance < 70:
+            risk = "Medium"
+        else:
+            risk = "Low"
+
+        # ================= SMART RECOMMENDATIONS =================
+        recommendations = generate_smart_recommendation(
+            attendance,
+            avg_marks,
+            backlogs
+        )
+
+        # ================= FINAL RESPONSE =================
+        return Response({
+            "attendance": round(attendance, 2),
+            "average_marks": round(avg_marks, 2),
+            "performance_level": performance,
+            "risk_level": risk,
+            "recommendations": recommendations
+        })
+    
+
+# views.py
+from django.db.models import Avg
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+from .models import Subject, Attendance, Marks
+
+
+class SemesterPerformancePieAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        try:
+            student = request.user.student
+        except:
+            return Response({"error": "Student not found"}, status=400)
+
+        current_sem = (
+            Subject.objects.filter(
+                department=student.department,
+                year=student.year
+            )
+            .order_by("-semester")
+            .values_list("semester", flat=True)
+            .first()
+        )
+
+        if not current_sem:
+            return Response({"pie_data": []})
+
+        subjects = Subject.objects.filter(
+            department=student.department,
+            year=student.year,
+            semester=current_sem
+        )
+
+        high = 0
+        medium = 0
+        low = 0
+
+        subject_breakdown = []
+
+        for subject in subjects:
+
+            attendance_qs = Attendance.objects.filter(
+                student=student,
+                subject=subject
+            )
+
+            total = attendance_qs.count()
+            present = attendance_qs.filter(status="P").count()
+            attendance = (present / total * 100) if total else 0
+
+            mid = Marks.objects.filter(
+                student=student, subject=subject, exam_type="MID"
+            ).aggregate(avg=Avg("marks_obtained"))["avg"] or 0
+
+            internal = Marks.objects.filter(
+                student=student, subject=subject, exam_type="INT"
+            ).aggregate(avg=Avg("marks_obtained"))["avg"] or 0
+
+            final = Marks.objects.filter(
+                student=student, subject=subject, exam_type="FIN"
+            ).aggregate(avg=Avg("marks_obtained"))["avg"] or 0
+
+            avg_marks = (mid + internal + final) / 3 if (mid or internal or final) else 0
+
+            if attendance == 0 and avg_marks == 0:
+                continue
+
+            if attendance < 60 or avg_marks < 40:
+                category = "High Risk"
+                high += 1
+            elif attendance < 75 or avg_marks < 60:
+                category = "Medium Risk"
+                medium += 1
+            else:
+                category = "Low Risk"
+                low += 1
+
+            subject_breakdown.append({
+                "subject": subject.name,
+                "attendance": round(attendance, 2),
+                "average_marks": round(avg_marks, 2),
+                "risk": category
+            })
+
+        pie_data = [
+            {"name": "Low", "value": low},
+            {"name": "Medium", "value": medium},
+            {"name": "High", "value": high},
+        ]
+
+        return Response({
+            "pie_data": pie_data,
+            "subject_breakdown": subject_breakdown,
+            "current_semester": current_sem
+        })

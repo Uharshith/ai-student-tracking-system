@@ -10,15 +10,15 @@ from django.contrib.auth.models import User
 
 
 # =========================
-# CONFIG
+# CONFIG (ONLY CHANGE THIS)
 # =========================
-FILE_PATH = "sem2_attendance.xlsx"
-YEAR = 1
-SEMESTER = 2
+FILE_PATH = "sem7_attendance_generated.xlsx"
+YEAR = 4
+SEMESTER = 7
 
 
 # =========================
-# HELPER
+# NORMALIZER
 # =========================
 def normalize(text):
     return str(text).strip().lower()
@@ -32,15 +32,15 @@ print("🚀 Starting attendance import...")
 # =========================
 df = pd.read_excel(FILE_PATH)
 
-# 🔥 ALWAYS PRINT COLUMNS (DEBUG)
-print("📊 Columns in file:", list(df.columns))
+print("📊 Original Columns:", list(df.columns))
 
-# Normalize column names
 df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+
+print("📊 Cleaned Columns:", list(df.columns))
 
 
 # =========================
-# FIX COLUMN NAMES (ROBUST)
+# FIX COLUMN NAMES
 # =========================
 if "register_number" in df.columns:
     df.rename(columns={"register_number": "roll_number"}, inplace=True)
@@ -63,6 +63,15 @@ for col in required_columns:
 
 
 # =========================
+# CHECK DUPLICATES IN FILE
+# =========================
+duplicates = df.duplicated(subset=["roll_number", "subject", "date"])
+
+if duplicates.any():
+    print(f"⚠️ Found {duplicates.sum()} duplicate rows in file")
+
+
+# =========================
 # GET FACULTY
 # =========================
 faculty_user = User.objects.filter(username="faculty1").first()
@@ -74,24 +83,38 @@ faculty = faculty_user.faculty
 
 
 # =========================
-# PRELOAD DATA
+# PRELOAD STUDENTS
 # =========================
 students = {
     normalize(s.roll_number): s
     for s in Student.objects.all()
 }
 
+
+# =========================
+# PRELOAD SUBJECTS (🔥 DYNAMIC)
+# =========================
+subjects_qs = Subject.objects.filter(year=YEAR, semester=SEMESTER)
+
+if not subjects_qs.exists():
+    raise Exception(f"❌ No subjects found for Year {YEAR}, Semester {SEMESTER}")
+
 subjects = {
     normalize(s.name): s
-    for s in Subject.objects.filter(year=YEAR, semester=SEMESTER)
+    for s in subjects_qs
 }
+
+print("\n📚 Subjects loaded from DB:")
+for s in subjects_qs:
+    print("-", s.name)
 
 
 # =========================
 # EXISTING DATA
 # =========================
 existing = set(
-    Attendance.objects.values_list("student_id", "subject_id", "date")
+    Attendance.objects.filter(subject__semester=SEMESTER)
+    .values_list("student_id", "subject_id", "date")
 )
 
 
@@ -110,7 +133,9 @@ for i, row in df.iterrows():
         subject_name = normalize(row["subject"])
         status_value = normalize(row["status"])
 
-        # DATE PARSE
+        # -------------------------
+        # DATE
+        # -------------------------
         date_value = pd.to_datetime(row["date"], errors="coerce", dayfirst=True)
 
         if pd.isna(date_value):
@@ -120,27 +145,38 @@ for i, row in df.iterrows():
 
         date_value = date_value.date()
 
-        # STUDENT CHECK
+        # -------------------------
+        # STUDENT
+        # -------------------------
         student = students.get(roll)
+
         if not student:
             print(f"❌ Student not found: {roll}")
             skipped += 1
             continue
 
-        # SUBJECT CHECK (SEM FIXED)
+        # -------------------------
+        # SUBJECT (🔥 NO HARDCODING)
+        # -------------------------
         subject = subjects.get(subject_name)
+
         if not subject:
-            print(f"❌ Subject not found (SEM {SEMESTER}): {subject_name}")
+            print(f"❌ Subject not found in DB: {subject_name}")
             skipped += 1
             continue
 
-        # DUPLICATE CHECK
+        # -------------------------
+        # DUPLICATE
+        # -------------------------
         key = (student.id, subject.id, date_value)
+
         if key in existing:
             skipped += 1
             continue
 
-        # STATUS VALIDATION
+        # -------------------------
+        # STATUS
+        # -------------------------
         if status_value in ["present", "p"]:
             status_code = "P"
         elif status_value in ["absent", "a"]:
@@ -150,6 +186,9 @@ for i, row in df.iterrows():
             skipped += 1
             continue
 
+        # -------------------------
+        # CREATE
+        # -------------------------
         attendance_objects.append(
             Attendance(
                 student=student,
@@ -163,10 +202,13 @@ for i, row in df.iterrows():
         existing.add(key)
         inserted += 1
 
+        # -------------------------
         # BULK INSERT
+        # -------------------------
         if len(attendance_objects) >= batch_size:
             Attendance.objects.bulk_create(attendance_objects)
             attendance_objects = []
+            print(f"⚡ Inserted {inserted} records...")
 
     except Exception as e:
         print(f"⚠️ Error at row {i}: {e}")
@@ -183,6 +225,8 @@ if attendance_objects:
 # =========================
 # RESULT
 # =========================
+print("\n==========================")
 print("✅ Attendance inserted:", inserted)
 print("⚠️ Rows skipped:", skipped)
-print("🎯 Import completed successfully")
+print("🎯 Import completed")
+print("==========================")

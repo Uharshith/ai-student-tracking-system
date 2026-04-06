@@ -1,68 +1,100 @@
-def generate_recommendation(prediction):
+def generate_recommendation(prediction, attendance, avg_marks, backlogs):
 
+    base = []
+
+    # ===============================
+    # ML BASE (your existing logic)
+    # ===============================
     if prediction == 0:
-        return {
-            "performance_level": "Low",
-            "risk_level": "High",
-
-            "student_recommendations": [
-                "Your current academic indicators suggest a high risk of underperformance.",
-                "It is strongly advised to improve attendance consistency above 75%.",
-                "Prioritize clearing pending backlogs to avoid cumulative academic impact.",
-                "Seek additional academic support sessions or faculty mentoring."
-            ],
-
-            "faculty_recommendations": [
-                "Student shows high academic risk based on predictive indicators.",
-                "Recommend one-on-one academic counseling.",
-                "Monitor attendance trends weekly.",
-                "Provide structured remedial guidance."
-            ]
-        }
+        performance = "Low"
+        risk = "High"
+        base = [
+            "Your academic performance is currently at risk.",
+            "Immediate improvement is required to avoid failure."
+        ]
 
     elif prediction == 1:
-        return {
-            "performance_level": "Medium",
-            "risk_level": "Moderate",
-
-            "student_recommendations": [
-                "Academic performance is stable but requires improvement for higher outcomes.",
-                "Focus on strengthening internal assessment consistency.",
-                "Increase active participation in coursework and assignments.",
-                "Aim to maintain attendance above 80%."
-            ],
-
-            "faculty_recommendations": [
-                "Student demonstrates moderate performance stability.",
-                "Encourage performance optimization strategies.",
-                "Provide periodic feedback to boost academic consistency."
-            ]
-        }
+        performance = "Medium"
+        risk = "Medium"
+        base = [
+            "Your performance is stable but needs improvement.",
+            "You have potential to reach higher levels."
+        ]
 
     elif prediction == 2:
-        return {
-            "performance_level": "High",
-            "risk_level": "Low",
-
-            "student_recommendations": [
-                "Excellent academic trajectory detected.",
-                "Maintain consistency across attendance and assessments.",
-                "Consider preparing for competitive academic opportunities.",
-                "Engage in advanced academic enrichment programs."
-            ],
-
-            "faculty_recommendations": [
-                "Student exhibits strong academic indicators.",
-                "Encourage participation in advanced or research activities.",
-                "Consider recommending for academic excellence programs."
-            ]
-        }
+        performance = "High"
+        risk = "Low"
+        base = [
+            "You are performing well academically.",
+            "Maintain consistency for continued success."
+        ]
 
     else:
         return {
             "performance_level": "Unknown",
             "risk_level": "Unknown",
-            "student_recommendations": [],
-            "faculty_recommendations": []
+            "student_recommendations": []
         }
-  
+
+    # ===============================
+    # DYNAMIC ADDITIONS (REAL POWER)
+    # ===============================
+
+    dynamic = []
+
+    # Attendance logic
+    if attendance < 60:
+        dynamic += [
+            "Your attendance is critically low. Attend all classes without fail.",
+            "Missing classes is directly affecting your performance."
+        ]
+    elif attendance < 75:
+        dynamic += [
+            "Improve attendance to reach safer academic standing.",
+            "Try to maintain at least 75% attendance consistently."
+        ]
+    else:
+        dynamic += [
+            "Good attendance maintained. Keep it consistent.",
+            "Regular class participation is helping your performance."
+        ]
+
+    # Marks logic
+    if avg_marks < 40:
+        dynamic += [
+            "Your marks are below passing level. Focus on core concepts.",
+            "Increase practice and revision immediately."
+        ]
+    elif avg_marks < 60:
+        dynamic += [
+            "Your marks are average. Improve problem-solving practice.",
+            "Focus on weak subjects to boost performance."
+        ]
+    else:
+        dynamic += [
+            "Strong academic performance observed.",
+            "You can aim for distinction with consistent effort."
+        ]
+
+    # Backlogs logic
+    if backlogs > 0:
+        dynamic += [
+            f"You have {backlogs} backlog(s). Prioritize clearing them.",
+            "Backlogs will increase academic pressure if ignored."
+        ]
+    else:
+        dynamic += [
+            "No backlogs detected. Good academic standing.",
+            "Maintain this consistency moving forward."
+        ]
+
+    # ===============================
+    # FINAL OUTPUT
+    # ===============================
+    recommendations = list(dict.fromkeys(base + dynamic))[:8]
+
+    return {
+        "performance_level": performance,
+        "risk_level": risk,
+        "student_recommendations": recommendations
+    }

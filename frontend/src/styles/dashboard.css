@@ -9,48 +9,100 @@
   font-family:"Inter",sans-serif;
 }
 
-/* ================= SIDEBAR ================= */
-
 .sidebar{
-  width:240px;
+  position: fixed;   /* 🔥 main fix */
+  top: 0;
+  left: 0;
+  height: 100vh;
+
+  
   background:#111827;
   color:white;
+
   padding:25px 20px;
+
   display:flex;
   flex-direction:column;
   gap:12px;
+
+  overflow-y: auto; /* if menu grows */
+  width: 200px;
+  padding:20px 16px;
 }
 
+
 .sidebar a{
-  color:#d1d5db;
+  color:#9ca3af;
   text-decoration:none;
-  padding:10px 14px;
-  border-radius:8px;
+  padding:12px 14px;
+  border-radius:10px;
+
   transition:0.25s ease;
   font-size:14px;
+
+  display:flex;
+  align-items:center;
+
+   padding:10px 12px;
+  font-size:13.5px;
+
 }
 
 .sidebar a:hover{
   background:#1f2937;
   color:white;
+  transform: translateX(4px); /* 🔥 subtle pro touch */
 }
 
 .sidebar a.active{
   background:linear-gradient(135deg,#4f46e5,#06b6d4);
   color:white;
+  box-shadow:0 8px 20px rgba(79,70,229,0.25);
 }
 
 /* ================= MAIN AREA ================= */
 
 .dashboard-main{
-  flex:1;
-  display:flex;
-  flex-direction:column;
+  margin-left: 270px;
 }
 
 /* ================= NAVBAR ================= */
+.dashboard-content{
+  padding:30px;
+  flex:1;
+  margin-top: 70px;   /* 🔥 prevents overlap */
+}
+
+.navbar span,
+.navbar h1{
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Logout button */
+.navbar button{
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+
+  padding: 8px 16px;
+  border-radius: 10px;
+
+  color: white;
+  cursor: pointer;
+
+  backdrop-filter: blur(6px);
+  transition: 0.3s ease;
+}
+
+.navbar button:hover{
+  background: rgba(255,255,255,0.25);
+  transform: translateY(-2px);
+}
 
 .navbar{
+   position: fixed; 
+   width: 1030px;
   padding:15px 25px;
   background:white;
   display:flex;
@@ -590,4 +642,142 @@ tbody tr:hover{
     margin-top:10px;
   }
 
+}
+
+
+
+
+
+/* ================= AI RECOMMENDATIONS (PRO LEVEL) ================= */
+
+.chart-container h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #111827;
+}
+
+/* Container */
+.chart-box {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+}
+
+/* List */
+.chart-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Card item */
+.chart-box ul li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+
+  padding: 16px 18px;
+
+  background: #f9fafb;
+  border-radius: 14px;
+
+  border: 1px solid #eef2f7;
+
+  font-size: 14.5px;
+  color: #374151;
+  line-height: 1.6;
+  font-weight: 500;
+
+  transition: all 0.28s ease;
+}
+
+/* LEFT ACCENT BAR */
+.chart-box ul li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  border-radius: 14px 0 0 14px;
+  background: linear-gradient(180deg, #6366f1, #06b6d4);
+}
+
+/* ICON */
+.chart-box ul li::after {
+  content: "✨";
+  font-size: 16px;
+  margin-right: 6px;
+}
+
+/* HOVER */
+.chart-box ul li:hover {
+  background: #ffffff;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  border-color: #e0e7ff;
+}
+
+/* SUBTLE INNER GLOW */
+.chart-box ul li:hover::before {
+  background: linear-gradient(180deg, #4f46e5, #22c55e);
+}
+
+/* EMPTY STATE */
+.chart-box p {
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  padding: 30px 0;
+}
+
+/* ================= MICRO DETAIL (THIS MAKES IT PRO) ================= */
+
+/* smooth entry animation */
+.chart-box ul li {
+  animation: fadeSlide 0.4s ease forwards;
+  opacity: 0;
+}
+
+.chart-box ul li:nth-child(1) { animation-delay: 0.05s; }
+.chart-box ul li:nth-child(2) { animation-delay: 0.1s; }
+.chart-box ul li:nth-child(3) { animation-delay: 0.15s; }
+.chart-box ul li:nth-child(4) { animation-delay: 0.2s; }
+.chart-box ul li:nth-child(5) { animation-delay: 0.25s; }
+.chart-box ul li:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 768px) {
+  .chart-box {
+    padding: 16px;
+  }
+
+  .chart-box ul li {
+    padding: 14px;
+    font-size: 13.5px;
+  }
+}
+
+.logo{
+  font-size:18px;
+  margin-bottom:20px;
 }

@@ -8,8 +8,6 @@ const studentService = {
   updateProfile: (data) => api.put("/profile/", data),
 
   // ================= ATTENDANCE =================
-
-  // ✅ CLEAN PARAMS (NO STRING CONCAT BUGS)
   getAttendanceSummary: (params) => {
     return api.get("/student/attendance-summary/", { params });
   },
@@ -32,8 +30,16 @@ const studentService = {
     });
   },
 
-  // ================= RECOMMENDATION =================
-  getRecommendation: () => api.get("/recommendation/"),
+  // ================= DASHBOARD =================
+  getCurrentSemStats: () => {
+    return api.get("/current-sem-dashboard/");
+  },
+
+  // 🔥 NEW — PIE CHART API
+  getRiskPieChart: () => {
+    return api.get("/subject-performance-pie/");
+  },
+
 };
 
 export default studentService;

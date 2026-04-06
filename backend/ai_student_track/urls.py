@@ -5,7 +5,6 @@ from .views import (
     StudentMarksView,
     AttendanceUpdateView,
     MarksUpdateView,
-    RecommendationAPIView,
     LoginAPIView,
     StudentRegisterAPIView,
     FacultyRegisterAPIView,
@@ -20,9 +19,10 @@ from .views import (
     BulkStudentRegisterView,
     StudentAttendanceHistoryView,
     StudentAttendanceSummaryView,
-    RecommendationView,
     SubjectRiskPredictionView,
     StudentSubjectListAPIView,
+    StudentDashboardAPIView,
+    SemesterPerformancePieAPIView,
 )
 
 urlpatterns = [
@@ -70,7 +70,8 @@ path("bulk-register-students/", BulkStudentRegisterView.as_view()),
 
 path("student/attendance-summary/", StudentAttendanceSummaryView.as_view()),
 path("student/attendance-history/", StudentAttendanceHistoryView.as_view()),
-path("recommendation/", RecommendationView.as_view()),
 path("subject-risk/", SubjectRiskPredictionView.as_view()),
 path("student/subjects/", StudentSubjectListAPIView.as_view()),
+ path("current-sem-dashboard/", StudentDashboardAPIView.as_view()),
+ path("subject-performance-pie/", SemesterPerformancePieAPIView.as_view()),
 ]

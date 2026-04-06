@@ -5,18 +5,14 @@ import "../../styles/prediction.css";
 
 export default function PredictionPage() {
 
-  const userName = "Dinku";
+  const userName = "AI";
 
   const [semester, setSemester] = useState(1);
-
   const [predictions, setPredictions] = useState([]);
-  const [trendAnalysis, setTrendAnalysis] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ✅ ONLY TREND CONTROL
   const [showTrend, setShowTrend] = useState(false);
 
   useEffect(() => {
@@ -27,15 +23,14 @@ export default function PredictionPage() {
     try {
       setLoading(true);
 
-      const subjectRisk = await predictionService.getSubjectRisk(semester);
-      const recommendation = await predictionService.getRecommendation(semester);
+      const data = await predictionService.getSubjectRisk(semester);
 
-      setPredictions(subjectRisk || []);
-      setTrendAnalysis(recommendation?.trend_analysis || []);
-      setRecommendations(recommendation?.recommendations || []);
+      console.log("🔥 FINAL DATA:", data);
+
+      setPredictions(data || []);
 
     } catch (err) {
-      console.error("Prediction Error:", err);
+      console.error("❌ Prediction Error:", err);
       setError("Unable to load prediction data");
     } finally {
       setLoading(false);
@@ -71,7 +66,7 @@ export default function PredictionPage() {
         </select>
       </div>
 
-      {/* 🔥 TREND BUTTON */}
+      {/* TREND BUTTON */}
       <div style={{ marginBottom: "20px" }}>
         <button
           onClick={() => setShowTrend(prev => !prev)}
@@ -88,65 +83,44 @@ export default function PredictionPage() {
         </button>
       </div>
 
-      {/* 🔴 ONLY TREND CONTROLLED */}
+      {/* TREND SECTION */}
       {showTrend && (
-        <div style={{
-          border: "2px solid #ddd",
-          padding: "20px",
-          marginBottom: "30px",
-          borderRadius: "10px",
-          background: "#f9f9f9"
-        }}>
-          <h2>Exam Trend Analysis</h2>
-
-          <div className="dashboard-grid">
-            {trendAnalysis.length === 0 ? (
-              <p>No trend analysis available</p>
-            ) : (
-              trendAnalysis.map((trend, index) => (
-                <div key={index} className="card">
-                  <h3>{trend.subject}</h3>
-                  <p><strong>MID:</strong> {trend.mid}</p>
-                  <p><strong>Internal:</strong> {trend.internal}</p>
-                  <p><strong>Final:</strong> {trend.final}</p>
-                  <p><strong>Trend:</strong> {trend.trend}</p>
-                  <p><strong>AI Insight:</strong><br />{trend.message}</p>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="dashboard-grid">
+          {predictions.map((item, index) => (
+            <div key={index} className="card">
+              <h3>{item.subject}</h3>
+              <p><strong>MID:</strong> {item.mid}</p>
+              <p><strong>Internal:</strong> {item.internal}</p>
+              <p><strong>Final:</strong> {item.final}</p>
+              <p><strong>Trend:</strong> {item.trend}</p>
+              <p><strong>AI Insight:</strong><br />{item.trend_message}</p>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* ✅ ALWAYS VISIBLE */}
-      <h2>AI Recommendations</h2>
-      <div className="card">
-        {recommendations.length === 0 ? (
-          <p>No recommendations available</p>
-        ) : (
-          <ul>
-            {recommendations.map((rec, index) => (
-              <li key={index}>{rec}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* ✅ ALWAYS VISIBLE */}
+      {/* SUBJECT DATA */}
       <div className="dashboard-grid">
-        {predictions.length === 0 ? (
-          <p>No data found</p>
-        ) : (
-          predictions.map((item, index) => (
-            <div key={index} className={`card ${getRiskClass(item.risk)}`}>
-              <h3>{item.subject}</h3>
-              <p><strong>Risk Level:</strong> {item.risk}</p>
-              <p><strong>Attendance:</strong> {item.attendance}%</p>
-              <p><strong>Average Marks:</strong> {item.average_marks}</p>
-              <p><strong>AI Insight:</strong><br />{item.ai_insight}</p>
-            </div>
-          ))
-        )}
+        {predictions.map((item, index) => (
+          <div key={index} className={`card ${getRiskClass(item.risk)}`}>
+
+            <h3>{item.subject}</h3>
+
+            <p><strong>Risk:</strong> {item.risk}</p>
+            <p><strong>Attendance:</strong> {item.attendance}%</p>
+            <p><strong>Marks:</strong> {item.average_marks}</p>
+
+            <p><strong>AI Insight:</strong><br />{item.ai_insight}</p>
+
+            <p><strong>Recommendations:</strong></p>
+            <ul>
+              {item.recommendations.map((rec, i) => (
+                <li key={i}>{rec}</li>
+              ))}
+            </ul>
+
+          </div>
+        ))}
       </div>
 
     </div>
