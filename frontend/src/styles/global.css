@@ -22,6 +22,8 @@ body {
   color: #cbd5e1;
   text-decoration: none;
   margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: bold;
 }
 
 .sidebar a:hover {

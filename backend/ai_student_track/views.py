@@ -169,9 +169,19 @@ class SubjectListAPIView(APIView):
     permission_classes = [IsAuthenticated, IsFaculty]
 
     def get(self, request):
+        semester = request.GET.get("semester")
+        year = request.GET.get("year")
+
         subjects = Subject.objects.filter(
             department=request.user.faculty.department
         )
+
+        if semester:
+            subjects = subjects.filter(semester=semester)
+
+        if year:
+            subjects = subjects.filter(year=year)
+
         serializer = SubjectSerializer(subjects, many=True)
         return Response(serializer.data)
 
@@ -843,14 +853,18 @@ class SubjectListAPIView(APIView):
         year = request.GET.get("year")
 
         subjects = Subject.objects.filter(
-            department=request.user.faculty.department,
-            semester=semester,
-            year=year
+            department=request.user.faculty.department
         )
 
-        serializer = SubjectSerializer(subjects, many=True)
-        return Response(serializer.data)
+        if semester:
+            subjects = subjects.filter(semester=semester)
 
+        if year:
+            subjects = subjects.filter(year=year)
+
+        return Response(SubjectSerializer(subjects, many=True).data)
+    
+    
 class AttendanceCreateView(APIView):
     permission_classes = [IsAuthenticated, IsFaculty]
 

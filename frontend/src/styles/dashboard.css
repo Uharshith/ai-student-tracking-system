@@ -5,7 +5,7 @@
 .dashboard-container{
   display:flex;
   min-height:100vh;
-  background:#f3f4f6;
+  background:#f7e7d5;
   font-family:"Inter",sans-serif;
 }
 
@@ -16,8 +16,8 @@
   height: 100vh;
 
   
-  background:#111827;
-  color:white;
+  background:#0051ff;
+  color:rgb(209, 36, 36);
 
   padding:25px 20px;
 
